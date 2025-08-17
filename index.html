@@ -238,9 +238,42 @@
       requestAnimationFrame(loop);
     }
 
-    // ====== Event Mouse ======
-    canvas.addEventListener("click", e => {
-      const my = e.offsetY;
+  // ====== Event Input (Mouse + Touch) ======
+function handleInput(y) {
+  if (gameState === "menu") {
+    if (y >= 250 && y <= 300) { resetGame(); setLevel(1); gameState = "playing"; }
+    else if (y >= 320 && y <= 370) { gameState = "level"; }
+    else if (y >= 390 && y <= 440) { gameState = "instructions"; }
+  } else if (gameState === "level") {
+    if (y >= 200 && y <= 250) { resetGame(); setLevel(1); gameState = "playing"; }
+    else if (y >= 280 && y <= 330) { resetGame(); setLevel(2); gameState = "playing"; }
+    else if (y >= 360 && y <= 410) { resetGame(); setLevel(3); gameState = "playing"; }
+    else if (y >= 440 && y <= 490) { gameState = "menu"; }
+  } else if (gameState === "instructions") {
+    if (y >= 500 && y <= 550) gameState = "menu";
+  } else if (gameState === "playing") {
+    if (!gameOver) bird.jump();
+  } else if (gameState === "gameover") {
+    if (y >= canvas.height/2 + 50 && y <= canvas.height/2 + 100) {
+      resetGame();
+      gameState = "playing";
+    } else if (y >= canvas.height/2 + 120 && y <= canvas.height/2 + 170) {
+      gameState = "menu";
+    }
+  }
+}
+
+// Klik (PC)
+canvas.addEventListener("click", e => {
+  handleInput(e.offsetY);
+});
+
+// Sentuh (HP)
+canvas.addEventListener("touchstart", e => {
+  const rect = canvas.getBoundingClientRect();
+  const touchY = e.touches[0].clientY - rect.top;
+  handleInput(touchY);
+});
 
       if (gameState === "menu") {
         if (my >= 250 && my <= 300) { resetGame(); setLevel(1); gameState = "playing"; }
@@ -277,3 +310,4 @@
   </script>
 </body>
 </html>
+
