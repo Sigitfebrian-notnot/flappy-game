@@ -7,34 +7,149 @@
     body {
       margin: 0;
       overflow: hidden;
-      background: skyblue;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
     }
 
     canvas {
-      background: linear-gradient(to bottom, #87CEEB, #ffffff);
       display: block;
-      border: 2px solid #000;
       touch-action: none; /* cegah geser halaman saat tap */
     }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <canvas id="gameCanvas"></canvas>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
+    // Set canvas fullscreen
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Load background & bird image
+    const bgImg = new Image();
+    bgImg.src = "background.png"; // ganti dengan gambar backgroundmu
+
+    const birdImg = new Image();
+    birdImg.src = "bird.png"; // ganti dengan gambar burungmu
+
     // Bird
     let birdX = 50;
-    let birdY = 150;
-    let birdRadius = 15;
-    let gravity = 0.6;
+    let birdY = canvas.height / 2;
+    let birdSize = 40; // ukuran burung
+    let gravity = 0.5;
     let lift = -10;
+    let velocity = 0;
+
+    // Pipes
+    let pipes = [];
+    let pipeWidth = 80;
+    let pipeGap = 180;
+    let frame = 0;
+    let pipeSpeed = 2; // lebih lambat
+
+    // Score
+    let score = 0;
+    let gameOver = false;
+
+    function flap() {
+      if (!gameOver) velocity = lift;
+      else location.reload();
+    }
+
+    // Kontrol: Keyboard + Tap layar
+    document.addEventListener("keydown", flap);
+    canvas.addEventListener("touchstart", flap);
+
+    function drawBird() {
+      ctx.drawImage(birdImg, birdX, birdY, birdSize, birdSize);
+    }
+
+    function drawPipes() {
+      ctx.fillStyle = "green";
+      pipes.forEach(pipe => {
+        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+        ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipeWidth, pipe.bottom);
+      });
+    }
+
+    function updatePipes() {
+      if (frame % 120 === 0) { // jarak antar pipa lebih lebar
+        let top = Math.random() * (canvas.height / 2);
+        let bottom = canvas.height - top - pipeGap;
+        pipes.push({ x: canvas.width, top: top, bottom: bottom });
+      }
+
+      pipes.forEach(pipe => {
+        pipe.x -= pipeSpeed;
+
+        // Score
+        if (pipe.x + pipeWidth === birdX) {
+          score++;
+        }
+
+        // Collision
+        if (
+          birdX + birdSize > pipe.x &&
+          birdX < pipe.x + pipeWidth &&
+          (birdY < pipe.top || birdY + birdSize > canvas.height - pipe.bottom)
+        ) {
+          gameOver = true;
+        }
+      });
+
+      if (pipes.length && pipes[0].x < -pipeWidth) {
+        pipes.shift();
+      }
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "black";
+      ctx.font = "28px Arial";
+      ctx.fillText("Score: " + score, 20, 40);
+      if (gameOver) {
+        ctx.fillStyle = "red";
+        ctx.font = "50px Arial";
+        ctx.fillText("GAME OVER", canvas.width / 2 - 150, canvas.height / 2);
+        ctx.font = "24px Arial";
+        ctx.fillText("Tap layar / Tekan tombol untuk restart", canvas.width / 2 - 180, canvas.height / 2 + 40);
+      }
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw background
+      ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+
+      drawBird();
+      drawPipes();
+      drawScore();
+
+      velocity += gravity;
+      birdY += velocity;
+
+      updatePipes();
+
+      if (birdY + birdSize > canvas.height || birdY < 0) {
+        gameOver = true;
+      }
+
+      frame++;
+      if (!gameOver) requestAnimationFrame(update);
+      else drawScore();
+    }
+
+    update();
+
+    // Resize otomatis kalau layar diputar
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+  </script>
+</body>
+</html>    let lift = -10;
     let velocity = 0;
 
     // Pipes
