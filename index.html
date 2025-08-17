@@ -23,22 +23,14 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // Fullscreen canvas
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Load images
+    // Load gambar bg & burung (kamu siapkan sendiri)
     const bg = new Image();
     const bird = new Image();
-    const fg = new Image();
-    const pipeNorth = new Image();
-    const pipeSouth = new Image();
-
     bg.src = "bg.png";
     bird.src = "bird.png";
-    fg.src = "fg.png";
-    pipeNorth.src = "pipeNorth.png";
-    pipeSouth.src = "pipeSouth.png";
 
     // Bird
     let bX = 50;
@@ -49,7 +41,7 @@
 
     // Pipes
     let pipes = [];
-    let pipeGap = 140;
+    let pipeGap = 150;
     let pipeSpeed = 2;
 
     // Score
@@ -61,102 +53,89 @@
       if (!gameOver) {
         velocity = lift;
       } else {
-        location.reload(); // restart game
+        location.reload(); // restart
       }
     }
-
     document.addEventListener("keydown", flap);
     canvas.addEventListener("touchstart", flap);
 
-    // Pipe generator
-    pipes[0] = {
-      x: canvas.width,
-      y: 0
-    };
+    // Pipe pertama
+    pipes[0] = { x: canvas.width, y: 0 };
+
+    function drawPipe(x, y, height, flip = false) {
+      // Warna hijau pipa
+      let grad = ctx.createLinearGradient(0, y, 0, y + height);
+      grad.addColorStop(0, "#6ee16e");
+      grad.addColorStop(1, "#2c962c");
+      ctx.fillStyle = grad;
+
+      // Batang pipa
+      ctx.fillRect(x, y, 80, height);
+
+      // Kepala pipa
+      ctx.fillStyle = "#3ba63b";
+      if (!flip) {
+        ctx.fillRect(x - 5, y + height, 90, 20);
+      } else {
+        ctx.fillRect(x - 5, y - 20, 90, 20);
+      }
+    }
+
+    function drawGround() {
+      ctx.fillStyle = "#deb887";
+      ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
+      ctx.fillStyle = "#3ba63b";
+      ctx.fillRect(0, canvas.height - 85, canvas.width, 10);
+    }
 
     function draw() {
-      // Draw background
+      // Background
       ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
 
       for (let i = 0; i < pipes.length; i++) {
-        let constant = pipeNorth.height + pipeGap;
+        let constant = 200 + pipeGap;
 
-        // Draw pipes
-        function drawPipes() {
-  for (let i = 0; i < pipes.length; i++) {
-    let constant = pipeNorth.height + pipeGap;
+        // Pipa atas
+        drawPipe(pipes[i].x, pipes[i].y, 200, true);
+        // Pipa bawah
+        drawPipe(pipes[i].x, pipes[i].y + constant, canvas.height, false);
 
-    // gambar pipa atas
-    ctx.drawImage(pipeNorth, pipes[i].x, pipes[i].y);
-
-    // gambar pipa bawah
-    ctx.drawImage(pipeSouth, pipes[i].x, pipes[i].y + constant);
-
-    // gerakin pipa
-    pipes[i].x -= pipeSpeed;
-
-    // tambah pipa baru
-    if (pipes[i].x === canvas.width / 2) {
-      pipes.push({
-        x: canvas.width,
-        y: Math.floor(Math.random() * pipeNorth.height) - pipeNorth.height
-      });
-    }
-
-    // deteksi tabrakan
-    if (
-      bX + bird.width >= pipes[i].x &&
-      bX <= pipes[i].x + pipeNorth.width &&
-      (bY <= pipes[i].y + pipeNorth.height ||
-        bY + bird.height >= pipes[i].y + constant) ||
-      bY + bird.height >= canvas.height - fg.height
-    ) {
-      gameOver = true;
-    }
-
-    // tambah skor
-    if (pipes[i].x === 5) {
-      score++;
-    }
-  }
-        }
-
-        // Move pipe
         pipes[i].x -= pipeSpeed;
 
         if (pipes[i].x === canvas.width / 2) {
           pipes.push({
             x: canvas.width,
-            y: Math.floor(Math.random() * pipeNorth.height) - pipeNorth.height
+            y: Math.floor(Math.random() * -150)
           });
         }
 
-        // Collision detection
+        // Cek tabrakan
         if (
-          bX + bird.width >= pipes[i].x &&
-          bX <= pipes[i].x + pipeNorth.width &&
-          (bY <= pipes[i].y + pipeNorth.height ||
-            bY + bird.height >= pipes[i].y + constant) ||
-          bY + bird.height >= canvas.height - fg.height
+          (bX + bird.width >= pipes[i].x &&
+            bX <= pipes[i].x + 80 &&
+            (bY <= pipes[i].y + 200 ||
+              bY + bird.height >= pipes[i].y + constant)) ||
+          bY + bird.height >= canvas.height - 80
         ) {
           gameOver = true;
         }
 
+        // Tambah skor
         if (pipes[i].x === 5) {
           score++;
         }
       }
 
-      // Draw foreground
-      ctx.drawImage(fg, 0, canvas.height - fg.height, canvas.width, fg.height);
+      // Lantai
+      drawGround();
 
-      // Draw bird
+      // Burung
       ctx.drawImage(bird, bX, bY);
 
       velocity += gravity;
       bY += velocity;
 
-      // Draw score
+      // Skor
       ctx.fillStyle = "#fff";
       ctx.font = "30px Arial";
       ctx.fillText("Score : " + score, 10, canvas.height - 20);
@@ -174,7 +153,7 @@
 
     draw();
 
-    // Resize handler
+    // Resize
     window.addEventListener("resize", () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
