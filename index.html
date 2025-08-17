@@ -28,15 +28,15 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // ====== Gambar ======
+    // ====== Gambar Online ======
     const bgImg = new Image();
-    bgImg.src = "background.png"; // ganti dengan gambar awan kamu
+    bgImg.src = "https://i.ibb.co/6JrbnGs/bg.png"; // background awan
 
     const birdImg = new Image();
-    birdImg.src = "bird.png"; // ganti dengan foto burung kamu
+    birdImg.src = "https://i.ibb.co/hZ0WxjB/bird.png"; // burung kuning
 
     // ====== State Game ======
-    let gameState = "menu"; // "menu", "playing", "gameover", "level", "instructions"
+    let gameState = "menu"; 
     let frames = 0, score = 0, gameOver = false;
     let level = 1;
 
