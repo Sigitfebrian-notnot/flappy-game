@@ -230,6 +230,35 @@
        JAVASCRIPT: panjang & terperinci
        ============================ -->
   <script>
+    
+// ===== Load Background =====
+const bgImg = new Image();
+bgImg.src = "bg.png";
+
+// ===== Bird Skin Selector =====
+let birdImg = new Image();
+let chosenBird = localStorage.getItem('flybird_skin') || 'bird1.png';
+birdImg.src = chosenBird;
+
+const birdSelector = document.getElementById('birdSelector');
+for(let i=1; i<=100; i++){
+  const btn = document.createElement('button');
+  btn.dataset.bird = `bird${i}.png`;
+  btn.style.backgroundImage = `url(bird${i}.png)`;
+  if(chosenBird===`bird${i}.png`) btn.style.opacity="1";
+  birdSelector.appendChild(btn);
+}
+
+birdSelector.addEventListener('click', e=>{
+  if(e.target.dataset.bird){
+    chosenBird = e.target.dataset.bird;
+    birdImg.src = chosenBird;
+    try{ localStorage.setItem('flybird_skin', chosenBird); }catch(e){}
+    document.querySelectorAll('#birdSelector button').forEach(b=>b.style.opacity="0.6");
+    e.target.style.opacity="1";
+  }
+});
+
   /*
     backgroud.html — Full Fly Bird game (long form)
     - Uses bg.png and bird.png from same folder (user-provided)
