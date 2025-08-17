@@ -288,6 +288,234 @@
     loop();
   </script>
 </body>
+</html>    };
+
+    // ====== Pipa ======
+    const pipes = [];
+    let pipeWidth = 70, pipeGap = 130, pipeSpeed = 2;
+
+    function spawnPipe() {
+      const topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 100)) + 50;
+      pipes.push({ x: canvas.width, y: topHeight });
+    }
+
+    function updatePipes() {
+      for (let i = 0; i < pipes.length; i++) {
+        let p = pipes[i];
+        p.x -= pipeSpeed;
+        if (
+          bird.x < p.x + pipeWidth &&
+          bird.x + bird.w > p.x &&
+          (bird.y < p.y || bird.y + bird.h > p.y + pipeGap)
+        ) gameOver = true;
+        if (p.x + pipeWidth === bird.x) score++;
+      }
+      if (pipes.length && pipes[0].x + pipeWidth < 0) pipes.shift();
+      if (frames % 100 === 0) spawnPipe();
+    }
+
+    function drawPipe(x, y, height, isTop) {
+      const grad = ctx.createLinearGradient(x, 0, x + pipeWidth, 0);
+      grad.addColorStop(0, "#0f0");
+      grad.addColorStop(0.5, "#2ecc71");
+      grad.addColorStop(1, "#0f0");
+
+      ctx.fillStyle = grad;
+      if (isTop) {
+        ctx.fillRect(x, 0, pipeWidth, height);
+        ctx.fillStyle = "#1e8449";
+        ctx.fillRect(x - 5, height - 20, pipeWidth + 10, 20);
+      } else {
+        ctx.fillRect(x, y, pipeWidth, canvas.height - y);
+        ctx.fillStyle = "#1e8449";
+        ctx.fillRect(x - 5, y, pipeWidth + 10, 20);
+      }
+    }
+
+    function drawPipes() {
+      for (let p of pipes) {
+        drawPipe(p.x, 0, p.y, true);
+        drawPipe(p.x, p.y + pipeGap, canvas.height - (p.y + pipeGap), false);
+      }
+    }
+
+    // ====== Menu ======
+    function drawMenu() {
+      if (bgImg.complete) {
+        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = "#87CEEB";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      ctx.fillStyle = "black";
+      ctx.font = "36px Arial";
+      ctx.fillText("FLY BIRD", canvas.width / 2 - 80, 150);
+
+      drawButton("Play", 150, 250);
+      drawButton("Level Select", 200, 320);
+      drawButton("Instructions", 200, 390);
+    }
+
+    // ====== Tombol ======
+    function drawButton(text, w, y) {
+      ctx.fillStyle = "#2ecc71";
+      ctx.fillRect(canvas.width/2 - w/2, y, w, 50);
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.fillText(text, canvas.width/2 - ctx.measureText(text).width/2, y + 32);
+    }
+
+    // ====== Level Menu ======
+    function drawLevelMenu() {
+      ctx.fillStyle = "#87CEEB";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "black";
+      ctx.font = "28px Arial";
+      ctx.fillText("Select Level", canvas.width/2 - 80, 120);
+
+      drawButton("Level 1 (Easy)", 200, 200);
+      drawButton("Level 2 (Medium)", 200, 280);
+      drawButton("Level 3 (Hard)", 200, 360);
+      drawButton("Back", 100, 440);
+    }
+
+    // ====== Instructions ======
+    function drawInstructions() {
+      ctx.fillStyle = "#87CEEB";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "black";
+      ctx.font = "20px Arial";
+      ctx.fillText("How to Play:", 30, 100);
+      ctx.font = "16px Arial";
+      ctx.fillText("- Press SPACE or CLICK to jump", 30, 140);
+      ctx.fillText("- Avoid the pipes", 30, 170);
+      ctx.fillText("- Score +1 for each pipe passed", 30, 200);
+
+      drawButton("Back", 100, 500);
+    }
+
+    // ====== Game Over ======
+    function drawGameOver() {
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "white";
+      ctx.font = "36px Arial";
+      ctx.fillText("GAME OVER", canvas.width/2 - 100, canvas.height/2 - 40);
+
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, canvas.width/2 - 40, canvas.height/2);
+
+      drawButton("Restart", 120, canvas.height/2 + 50);
+      drawButton("Menu", 120, canvas.height/2 + 120);
+    }
+
+    // ====== Reset Game ======
+    function resetGame() {
+      bird.y = 150;
+      bird.speed = 0;
+      pipes.length = 0;
+      score = 0;
+      gameOver = false;
+      frames = 0;
+    }
+
+    // ====== Level Config ======
+    function setLevel(lvl) {
+      if (lvl === 1) { pipeSpeed = 2; pipeGap = 150; }
+      if (lvl === 2) { pipeSpeed = 3; pipeGap = 130; }
+      if (lvl === 3) { pipeSpeed = 4; pipeGap = 110; }
+      level = lvl;
+    }
+
+    // ====== Main Loop ======
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (gameState === "menu") {
+        drawMenu();
+      } else if (gameState === "level") {
+        drawLevelMenu();
+      } else if (gameState === "instructions") {
+        drawInstructions();
+      } else if (gameState === "playing") {
+        if (bgImg.complete) {
+          ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+        } else {
+          ctx.fillStyle = "#87CEEB";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        if (!gameOver) {
+          bird.update();
+          updatePipes();
+        }
+
+        bird.draw();
+        drawPipes();
+
+        ctx.fillStyle = "black";
+        ctx.font = "20px Arial";
+        ctx.fillText("Score: " + score, 10, 30);
+
+        frames++;
+        if (gameOver) gameState = "gameover";
+      } else if (gameState === "gameover") {
+        drawGameOver();
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    // ====== Input Handler (Mouse + Touch) ======
+    function handleInput(y) {
+      if (gameState === "menu") {
+        if (y >= 250 && y <= 300) { resetGame(); setLevel(1); gameState = "playing"; }
+        else if (y >= 320 && y <= 370) { gameState = "level"; }
+        else if (y >= 390 && y <= 440) { gameState = "instructions"; }
+      } else if (gameState === "level") {
+        if (y >= 200 && y <= 250) { resetGame(); setLevel(1); gameState = "playing"; }
+        else if (y >= 280 && y <= 330) { resetGame(); setLevel(2); gameState = "playing"; }
+        else if (y >= 360 && y <= 410) { resetGame(); setLevel(3); gameState = "playing"; }
+        else if (y >= 440 && y <= 490) { gameState = "menu"; }
+      } else if (gameState === "instructions") {
+        if (y >= 500 && y <= 550) gameState = "menu";
+      } else if (gameState === "playing") {
+        if (!gameOver) bird.jump();
+      } else if (gameState === "gameover") {
+        if (y >= canvas.height/2 + 50 && y <= canvas.height/2 + 100) {
+          resetGame();
+          gameState = "playing";
+        } else if (y >= canvas.height/2 + 120 && y <= canvas.height/2 + 170) {
+          gameState = "menu";
+        }
+      }
+    }
+
+    // Klik (PC)
+    canvas.addEventListener("click", e => {
+      handleInput(e.offsetY);
+    });
+
+    // Sentuh (HP)
+    canvas.addEventListener("touchstart", e => {
+      const rect = canvas.getBoundingClientRect();
+      const touchY = e.touches[0].clientY - rect.top;
+      handleInput(touchY);
+    });
+
+    // Keyboard (PC)
+    document.addEventListener("keydown", e => {
+      if (gameState === "playing" && e.code === "Space") bird.jump();
+      if (gameState === "gameover" && e.code === "Space") {
+        resetGame();
+        gameState = "playing";
+      }
+    });
+
+    loop();
+  </script>
+</body>
 </html>
     // ====== State Game ======
     let gameState = "menu"; 
@@ -564,5 +792,6 @@ canvas.addEventListener("touchstart", e => {
   </script>
 </body>
 </html>
+
 
 
