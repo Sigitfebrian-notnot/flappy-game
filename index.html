@@ -691,7 +691,6 @@
 
     // ---- initial draw (menu preview) ----
     function initialDraw(){
-      // draw a simple menu preview on canvas so menu doesn't look empty
       fitCanvas();
       ctx.clearRect(0,0,W,H);
       drawBackground();
@@ -699,6 +698,7 @@
       drawBird();
     }
     initialDraw();
+
 
     // ---- Start/pause/resume control bindings ----
     function resumeGame(){
