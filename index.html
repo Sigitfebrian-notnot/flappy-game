@@ -2,16 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fly Bird Game</title>
+  <title>Flappy Bird Clone</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
+      background: #000;
     }
-
     canvas {
       display: block;
-      touch-action: none; /* cegah geser halaman saat tap */
+      margin: auto;
+      touch-action: none;
     }
   </style>
 </head>
@@ -22,127 +23,158 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // Set canvas fullscreen
+    // Fullscreen canvas
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Load background & bird image
-    const bgImg = new Image();
-    bgImg.src = "background.png"; // ganti dengan gambar backgroundmu
+    // Load images
+    const bg = new Image();
+    const bird = new Image();
+    const fg = new Image();
+    const pipeNorth = new Image();
+    const pipeSouth = new Image();
 
-    const birdImg = new Image();
-    birdImg.src = "bird.png"; // ganti dengan gambar burungmu
+    bg.src = "bg.png";
+    bird.src = "bird.png";
+    fg.src = "fg.png";
+    pipeNorth.src = "pipeNorth.png";
+    pipeSouth.src = "pipeSouth.png";
 
     // Bird
-    let birdX = 50;
-    let birdY = canvas.height / 2;
-    let birdSize = 40; // ukuran burung
-    let gravity = 0.5;
-    let lift = -10;
+    let bX = 50;
+    let bY = 150;
+    let gravity = 1.5;
+    let lift = -25;
     let velocity = 0;
 
     // Pipes
     let pipes = [];
-    let pipeWidth = 80;
-    let pipeGap = 180;
-    let frame = 0;
-    let pipeSpeed = 2; // lebih lambat
+    let pipeGap = 140;
+    let pipeSpeed = 2;
 
     // Score
     let score = 0;
     let gameOver = false;
 
+    // Controls
     function flap() {
-      if (!gameOver) velocity = lift;
-      else location.reload();
+      if (!gameOver) {
+        velocity = lift;
+      } else {
+        location.reload(); // restart game
+      }
     }
 
-    // Kontrol: Keyboard + Tap layar
     document.addEventListener("keydown", flap);
     canvas.addEventListener("touchstart", flap);
 
-    function drawBird() {
-      ctx.drawImage(birdImg, birdX, birdY, birdSize, birdSize);
-    }
+    // Pipe generator
+    pipes[0] = {
+      x: canvas.width,
+      y: 0
+    };
 
-    function drawPipes() {
-      ctx.fillStyle = "green";
-      pipes.forEach(pipe => {
-        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
-        ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipeWidth, pipe.bottom);
+    function draw() {
+      // Draw background
+      ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < pipes.length; i++) {
+        let constant = pipeNorth.height + pipeGap;
+
+        // Draw pipes
+        function drawPipes() {
+  for (let i = 0; i < pipes.length; i++) {
+    let constant = pipeNorth.height + pipeGap;
+
+    // gambar pipa atas
+    ctx.drawImage(pipeNorth, pipes[i].x, pipes[i].y);
+
+    // gambar pipa bawah
+    ctx.drawImage(pipeSouth, pipes[i].x, pipes[i].y + constant);
+
+    // gerakin pipa
+    pipes[i].x -= pipeSpeed;
+
+    // tambah pipa baru
+    if (pipes[i].x === canvas.width / 2) {
+      pipes.push({
+        x: canvas.width,
+        y: Math.floor(Math.random() * pipeNorth.height) - pipeNorth.height
       });
     }
 
-    function updatePipes() {
-      if (frame % 120 === 0) { // jarak antar pipa lebih lebar
-        let top = Math.random() * (canvas.height / 2);
-        let bottom = canvas.height - top - pipeGap;
-        pipes.push({ x: canvas.width, top: top, bottom: bottom });
-      }
+    // deteksi tabrakan
+    if (
+      bX + bird.width >= pipes[i].x &&
+      bX <= pipes[i].x + pipeNorth.width &&
+      (bY <= pipes[i].y + pipeNorth.height ||
+        bY + bird.height >= pipes[i].y + constant) ||
+      bY + bird.height >= canvas.height - fg.height
+    ) {
+      gameOver = true;
+    }
 
-      pipes.forEach(pipe => {
-        pipe.x -= pipeSpeed;
-
-        // Score
-        if (pipe.x + pipeWidth === birdX) {
-          score++;
+    // tambah skor
+    if (pipes[i].x === 5) {
+      score++;
+    }
+  }
         }
 
-        // Collision
+        // Move pipe
+        pipes[i].x -= pipeSpeed;
+
+        if (pipes[i].x === canvas.width / 2) {
+          pipes.push({
+            x: canvas.width,
+            y: Math.floor(Math.random() * pipeNorth.height) - pipeNorth.height
+          });
+        }
+
+        // Collision detection
         if (
-          birdX + birdSize > pipe.x &&
-          birdX < pipe.x + pipeWidth &&
-          (birdY < pipe.top || birdY + birdSize > canvas.height - pipe.bottom)
+          bX + bird.width >= pipes[i].x &&
+          bX <= pipes[i].x + pipeNorth.width &&
+          (bY <= pipes[i].y + pipeNorth.height ||
+            bY + bird.height >= pipes[i].y + constant) ||
+          bY + bird.height >= canvas.height - fg.height
         ) {
           gameOver = true;
         }
-      });
 
-      if (pipes.length && pipes[0].x < -pipeWidth) {
-        pipes.shift();
+        if (pipes[i].x === 5) {
+          score++;
+        }
       }
-    }
 
-    function drawScore() {
-      ctx.fillStyle = "black";
-      ctx.font = "28px Arial";
-      ctx.fillText("Score: " + score, 20, 40);
-      if (gameOver) {
-        ctx.fillStyle = "red";
-        ctx.font = "50px Arial";
-        ctx.fillText("GAME OVER", canvas.width / 2 - 150, canvas.height / 2);
-        ctx.font = "24px Arial";
-        ctx.fillText("Tap layar / Tekan tombol untuk restart", canvas.width / 2 - 180, canvas.height / 2 + 40);
-      }
-    }
+      // Draw foreground
+      ctx.drawImage(fg, 0, canvas.height - fg.height, canvas.width, fg.height);
 
-    function update() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw background
-      ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-
-      drawBird();
-      drawPipes();
-      drawScore();
+      // Draw bird
+      ctx.drawImage(bird, bX, bY);
 
       velocity += gravity;
-      birdY += velocity;
+      bY += velocity;
 
-      updatePipes();
+      // Draw score
+      ctx.fillStyle = "#fff";
+      ctx.font = "30px Arial";
+      ctx.fillText("Score : " + score, 10, canvas.height - 20);
 
-      if (birdY + birdSize > canvas.height || birdY < 0) {
-        gameOver = true;
+      if (!gameOver) {
+        requestAnimationFrame(draw);
+      } else {
+        ctx.fillStyle = "red";
+        ctx.font = "50px Arial";
+        ctx.fillText("Game Over", canvas.width / 2 - 150, canvas.height / 2);
+        ctx.font = "24px Arial";
+        ctx.fillText("Tap layar / tekan tombol untuk restart", canvas.width / 2 - 200, canvas.height / 2 + 40);
       }
-
-      frame++;
-      if (!gameOver) requestAnimationFrame(update);
-      else drawScore();
     }
 
-    update();
+    draw();
 
-    // Resize otomatis kalau layar diputar
+    // Resize handler
     window.addEventListener("resize", () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
