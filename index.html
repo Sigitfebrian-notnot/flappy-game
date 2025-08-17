@@ -1,163 +1,605 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Flappy Bird Clone</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Fly Bird - Single File</title>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: #000;
+    :root{
+      --ui-bg: rgba(255,255,255,0.95);
+      --accent: #ff9900;
+      --muted: #666;
     }
-    canvas {
-      display: block;
-      margin: auto;
-      touch-action: none;
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(#87CEEB,#bfefff);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Canvas centering */
+    #container{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+    }
+
+    canvas{
+      display:block;
+      max-width:100%;
+      height:auto;
+      touch-action:none; /* prevent scrolling when tapping */
+      border-radius:10px;
+      box-shadow:0 8px 30px rgba(0,0,0,0.25);
+      background-size:cover;
+      background-position:center;
+    }
+
+    /* Menu / overlays */
+    .panel{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      background:var(--ui-bg);
+      padding:18px;
+      border-radius:12px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.2);
+      width:320px;
+      max-width:90%;
+      text-align:center;
+    }
+    .hidden{ display:none; }
+    h1{ margin:6px 0 12px; font-size:24px; }
+    p.desc{ margin:6px 0 12px; color:var(--muted); font-size:14px; }
+    .row{ display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap; }
+    button{
+      background:var(--accent);
+      border:none;
+      color:white;
+      padding:10px 14px;
+      border-radius:8px;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow:0 3px 0 rgba(0,0,0,0.08) inset;
+    }
+    button.gray{ background:#999; }
+    .small{ padding:8px 10px; font-size:14px; }
+    .info{ font-size:13px; color:#333; margin-top:8px; }
+
+    /* top UI */
+    #topUI{
+      position:absolute;
+      top:12px;
+      left:12px;
+      z-index:30;
+      color:#fff;
+      font-weight:700;
+      text-shadow:0 2px 4px rgba(0,0,0,0.5);
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    #topUI button{ background:rgba(0,0,0,0.35); padding:6px 10px; border-radius:8px; font-weight:600; color:#fff; border:0; }
+
+    /* bottom small hint */
+    #hint{ position:absolute; bottom:12px; left:50%; transform:translateX(-50%); color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.4); font-size:13px; }
+
+    /* responsive canvas ratio */
+    @media (min-aspect-ratio: 2/3) {
+      /* wide screens: limit height */
+      canvas{ width:420px; height:630px; }
+    }
+    @media (max-aspect-ratio: 2/3) {
+      /* tall screens (phones): full width */
+      canvas{ width:100%; height:calc(100vh - 40px); }
     }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
+  <div id="container">
+    <canvas id="gameCanvas" width="420" height="630" aria-label="Fly Bird game"></canvas>
 
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+    <!-- Top UI -->
+    <div id="topUI" aria-hidden="true">
+      <div id="scoreDisplay">Score: 0</div>
+      <button id="muteBtn" class="small">Mute</button>
+      <button id="menuBtn" class="small">Menu</button>
+    </div>
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    <!-- Menu Panel -->
+    <div id="menuPanel" class="panel">
+      <h1>Fly Bird</h1>
+      <p class="desc">Tap / Klik untuk lompat. Hindari pipa dan capai skor tertinggi!</p>
 
-    // Load gambar bg & burung (kamu siapkan sendiri)
-    const bg = new Image();
-    const bird = new Image();
-    bg.src = "background.png";
-    bird.src = "bird.png";
+      <div>
+        <label style="font-weight:600">Level</label>
+        <div class="row" style="margin-top:8px">
+          <button onclick="setLevel('easy')" id="lvlEasy">Easy</button>
+          <button onclick="setLevel('med')" id="lvlMed">Medium</button>
+          <button onclick="setLevel('hard')" id="lvlHard">Hard</button>
+        </div>
+      </div>
 
-    // Bird
-    let bX = 50;
-    let bY = 150;
-    let gravity = 1.5;
-    let lift = -25;
-    let velocity = 0;
+      <div class="row" style="margin-top:12px">
+        <button onclick="startFromMenu()">Play</button>
+        <button class="gray" id="howBtn">How</button>
+        <button class="gray" id="resetBest">Reset Best</button>
+      </div>
 
-    // Pipes
-    let pipes = [];
-    let pipeGap = 150;
-    let pipeSpeed = 2;
+      <div class="info" id="bestTxt">Best: 0</div>
+      <div class="info" style="margin-top:8px; font-size:12px;">(Ganti gambar: <code>bg.png</code>, <code>bird.png</code>)</div>
+    </div>
 
-    // Score
-    let score = 0;
-    let gameOver = false;
+    <!-- Pause/Game Over Panel (reused) -->
+    <div id="overlayPanel" class="panel hidden" aria-hidden="true">
+      <h2 id="overlayTitle">Paused</h2>
+      <div id="overlayScore" style="font-size:18px; margin:8px 0">Score: 0</div>
+      <div class="row">
+        <button onclick="resume()">Resume</button>
+        <button onclick="restart()">Restart</button>
+        <button onclick="backToMenu()">Menu</button>
+      </div>
+      <div style="margin-top:10px; font-size:13px; color:#333">Tap canvas / space untuk lompat</div>
+    </div>
 
-    // Controls
-    function flap() {
-      if (!gameOver) {
-        velocity = lift;
-      } else {
-        location.reload(); // restart
+    <div id="hint">Tap anywhere to flap — use space on keyboard</div>
+  </div>
+
+  <!-- Sounds (you can replace these files) -->
+  <audio id="bgm" src="bgm.mp3" loop preload="auto"></audio>
+  <audio id="sndFlap" src="flap.mp3" preload="auto"></audio>
+  <audio id="sndPoint" src="point.mp3" preload="auto"></audio>
+  <audio id="sndHit" src="hit.mp3" preload="auto"></audio>
+
+<script>
+/* =========================
+   Fly Bird - single file
+   - Uses bg.png & bird.png from same folder
+   - Draws pipes & ground procedurally
+   - Menu, levels, sounds, mute, restart, best score
+   ========================= */
+
+(() => {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // Elements
+  const menuPanel = document.getElementById('menuPanel');
+  const overlay = document.getElementById('overlayPanel');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayScore = document.getElementById('overlayScore');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  const bestTxt = document.getElementById('bestTxt');
+  const muteBtn = document.getElementById('muteBtn');
+  const menuBtn = document.getElementById('menuBtn');
+  const howBtn = document.getElementById('howBtn');
+  const resetBestBtn = document.getElementById('resetBest');
+
+  // sounds
+  const bgm = document.getElementById('bgm');
+  const sndFlap = document.getElementById('sndFlap');
+  const sndPoint = document.getElementById('sndPoint');
+  const sndHit = document.getElementById('sndHit');
+  let muted = false;
+
+  // assets (user-supplied)
+  const bgImg = new Image();
+  const birdImg = new Image();
+  bgImg.src = "bg.png";    // put your background here
+  birdImg.src = "bird.png"; // put your bird sprite here
+
+  // Game state
+  let W = canvas.width, H = canvas.height;
+  let scale = 1; // used in future if needed
+  let level = 'easy'; // easy / med / hard
+  let gameState = 'menu'; // menu, running, paused, over
+  let pipes = []; // {x, topHeight}
+  let score = 0, best = 0;
+  let bird = { x: 70, y: H/2 - 20, w: 48, h: 36, vy: 0, gravity: 0.5, flapPower: -8, rotation:0 };
+  let pipeW = 64, gap = 150, pipeSpeed = 2;
+  let spawnTimer = 0, spawnInterval = 110; // frames
+  let groundHeight = 80;
+
+  // Load best score
+  try {
+    best = Number(localStorage.getItem('flybird_best') || 0);
+  } catch(e){ best = 0; }
+  bestTxt.textContent = `Best: ${best}`;
+
+  // responsive resize
+  function fitCanvas(){
+    // Keep pixel size same but scale via CSS handled by media queries;
+    // we keep internal canvas coordinates to reference size attributes
+    const rect = canvas.getBoundingClientRect();
+    W = canvas.width = Math.max(320, Math.min(window.innerWidth - 20, 420));
+    H = canvas.height = Math.max(480, Math.min(window.innerHeight - 40, 800));
+    // reset some positions
+    bird.x = Math.round(W * 0.12);
+    if (bird.y > H - groundHeight - bird.h) bird.y = H/2;
+  }
+  window.addEventListener('resize', fitCanvas);
+  fitCanvas();
+
+  // set level params
+  function setLevel(lv){
+    level = lv;
+    document.getElementById('lvlEasy').style.opacity = lv==='easy'?1:0.6;
+    document.getElementById('lvlMed').style.opacity = lv==='med'?1:0.6;
+    document.getElementById('lvlHard').style.opacity = lv==='hard'?1:0.6;
+
+    if(lv==='easy'){ pipeSpeed = 2; gap = 170; spawnInterval=120; }
+    if(lv==='med'){ pipeSpeed = 3; gap = 150; spawnInterval=100; }
+    if(lv==='hard'){ pipeSpeed = 4.2; gap = 130; spawnInterval=85; }
+  }
+  setLevel('easy');
+
+  // menu controls
+  function startFromMenu(){
+    menuPanel.style.display = 'none';
+    start();
+  }
+  window.startFromMenu = startFromMenu;
+
+  function backToMenu(){
+    overlay.classList.add('hidden');
+    menuPanel.style.display = 'block';
+    gameState = 'menu';
+  }
+  window.backToMenu = backToMenu;
+
+  // resume
+  function resume(){
+    overlay.classList.add('hidden');
+    if(gameState === 'paused') {
+      gameState = 'running';
+      loop();
+    } else if (gameState === 'over'){
+      // nothing
+      start();
+    }
+  }
+  window.resume = resume;
+
+  // restart
+  function restart(){
+    overlay.classList.add('hidden');
+    start();
+  }
+  window.restart = restart;
+
+  // mute toggle
+  function toggleMute(){
+    muted = !muted;
+    bgm.muted = sndFlap.muted = sndPoint.muted = sndHit.muted = muted;
+    muteBtn.textContent = muted ? 'Unmute' : 'Mute';
+  }
+  muteBtn.addEventListener('click', toggleMute);
+  menuBtn.addEventListener('click', () => {
+    // pause and show menu
+    if(gameState === 'running'){
+      gameState = 'paused';
+      overlayTitle.textContent = 'Paused';
+      overlayScore.textContent = `Score: ${score}`;
+      overlay.classList.remove('hidden');
+    } else {
+      menuPanel.style.display = 'block';
+    }
+  });
+
+  howBtn.addEventListener('click', () => {
+    alert('Tap layar / klik / tekan spasi untuk lompat. Hindari pipa. Pilih level sebelum Play. Ganti bg.png & bird.png dengan assetmu.');
+  });
+
+  resetBestBtn.addEventListener('click', () => {
+    if(confirm('Reset best score?')) {
+      best = 0;
+      try{ localStorage.setItem('flybird_best', '0'); }catch(e){}
+      bestTxt.textContent = `Best: ${best}`;
+    }
+  });
+
+  // input: tap / click / space
+  function flap(){
+    if(gameState === 'menu') {
+      startFromMenu();
+      return;
+    }
+    if(gameState === 'running'){
+      bird.vy = bird.flapPower;
+      bird.rotation = -0.6;
+      playSound(sndFlap);
+    } else if (gameState === 'over'){
+      start(); // restart automatically
+    }
+  }
+  canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); flap(); }, {passive:false});
+  canvas.addEventListener('mousedown', (e)=>{ flap(); });
+  window.addEventListener('keydown', (e)=>{
+    if(e.code === 'Space') { e.preventDefault(); flap(); }
+    if(e.code === 'KeyM'){ toggleMute(); }
+    if(e.code === 'KeyP'){ // pause
+      if (gameState === 'running'){
+        gameState = 'paused';
+        overlayTitle.textContent = 'Paused';
+        overlayScore.textContent = `Score: ${score}`;
+        overlay.classList.remove('hidden');
+      } else if (gameState === 'paused'){
+        resume();
       }
     }
-    document.addEventListener("keydown", flap);
-    canvas.addEventListener("touchstart", flap);
+  });
 
-    // Pipe pertama
-    pipes[0] = { x: canvas.width, y: 0 };
+  // sound helper (safe play)
+  function playSound(audio){
+    try{
+      if(!muted && audio){
+        audio.currentTime = 0;
+        audio.play().catch(()=>{ /* autoplay block */ });
+      }
+    }catch(e){}
+  }
 
-    function drawPipe(x, y, height, flip = false) {
-      // Warna hijau pipa
-      let grad = ctx.createLinearGradient(0, y, 0, y + height);
-      grad.addColorStop(0, "#6ee16e");
-      grad.addColorStop(1, "#2c962c");
-      ctx.fillStyle = grad;
+  // spawn pipe
+  function spawnPipe(){
+    const minTop = 40;
+    const maxTop = Math.max(100, H - groundHeight - gap - 40);
+    const topHeight = Math.floor(Math.random() * (maxTop - minTop)) + minTop;
+    pipes.push({ x: W + 20, top: topHeight, passed: false });
+  }
 
-      // Batang pipa
-      ctx.fillRect(x, y, 80, height);
+  // start game
+  function start(){
+    // reset
+    fitCanvas();
+    pipes = [];
+    score = 0;
+    bird.y = Math.round(H*0.4);
+    bird.vy = 0;
+    bird.rotation = 0;
+    spawnTimer = 0;
+    gameState = 'running';
+    // play bgm if available
+    bgm.currentTime = 0;
+    playSound(bgm);
+    loop();
+  }
 
-      // Kepala pipa
-      ctx.fillStyle = "#3ba63b";
-      if (!flip) {
-        ctx.fillRect(x - 5, y + height, 90, 20);
-      } else {
-        ctx.fillRect(x - 5, y - 20, 90, 20);
+  // collision detection
+  function checkCollision(pipe){
+    // bird rect
+    const bx1 = bird.x, by1 = bird.y, bx2 = bird.x + bird.w, by2 = bird.y + bird.h;
+    // top pipe rect
+    const px1 = pipe.x, py1 = 0, px2 = pipe.x + pipeW, py2 = pipe.top;
+    // bottom pipe rect
+    const bxTop = pipe.top + gap;
+    const p2x1 = pipe.x, p2y1 = bxTop, p2x2 = pipe.x + pipeW, p2y2 = H - groundHeight;
+    // check overlap
+    const overlapTop = !(bx2 < px1 || bx1 > px2 || by2 < py1 || by1 > py2);
+    const overlapBottom = !(bx2 < p2x1 || bx1 > p2x2 || by2 < p2y1 || by1 > p2y2);
+    return overlapTop || overlapBottom;
+  }
+
+  // update and draw loop
+  function loop(){
+    if(gameState !== 'running') return;
+
+    // physics
+    bird.vy += bird.gravity;
+    bird.y += bird.vy;
+    bird.rotation += 0.06;
+    if (bird.rotation > 1.2) bird.rotation = 1.2;
+
+    // spawn pipes
+    spawnTimer++;
+    if(spawnTimer >= spawnInterval){
+      spawnTimer = 0;
+      spawnPipe();
+    }
+
+    // move pipes and scoring
+    for(let i=pipes.length-1;i>=0;i--){
+      const p = pipes[i];
+      p.x -= pipeSpeed;
+
+      // pass scoring
+      if(!p.passed && p.x + pipeW < bird.x){
+        p.passed = true;
+        score++;
+        playSound(sndPoint);
+      }
+
+      // collision?
+      if(checkCollision(p)){
+        hit();
+        return;
+      }
+
+      // remove off-screen
+      if(p.x + pipeW < -50){
+        pipes.splice(i,1);
       }
     }
 
-    function drawGround() {
-      ctx.fillStyle = "#deb887";
-      ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
-      ctx.fillStyle = "#3ba63b";
-      ctx.fillRect(0, canvas.height - 85, canvas.width, 10);
+    // ground collision
+    if(bird.y + bird.h >= H - groundHeight){
+      bird.y = H - groundHeight - bird.h;
+      hit();
+      return;
+    }
+    if(bird.y < 0){
+      bird.y = 0;
+      bird.vy = 0;
     }
 
-    function draw() {
-      // Background
-      ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+    // DRAW
+    drawFrame();
 
-      for (let i = 0; i < pipes.length; i++) {
-        let constant = 200 + pipeGap;
+    // update top UI
+    scoreDisplay.textContent = `Score: ${score}`;
 
-        // Pipa atas
-        drawPipe(pipes[i].x, pipes[i].y, 200, true);
-        // Pipa bawah
-        drawPipe(pipes[i].x, pipes[i].y + constant, canvas.height, false);
+    // next frame
+    requestAnimationFrame(loop);
+  }
 
-        pipes[i].x -= pipeSpeed;
+  function hit(){
+    gameState = 'over';
+    playSound(sndHit);
+    bgm.pause();
+    overlayTitle.textContent = 'Game Over';
+    overlayScore.textContent = `Score: ${score}`;
+    overlay.classList.remove('hidden');
+    // save best
+    if(score > best){
+      best = score;
+      try{ localStorage.setItem('flybird_best', String(best)); }catch(e){}
+      bestTxt.textContent = `Best: ${best}`;
+    }
+  }
 
-        if (pipes[i].x === canvas.width / 2) {
-          pipes.push({
-            x: canvas.width,
-            y: Math.floor(Math.random() * -150)
-          });
-        }
+  // drawing helpers
+  function drawBackground(){
+    // if bg image loaded, draw full stretched
+    if(bgImg.complete && bgImg.naturalWidth){
+      ctx.drawImage(bgImg, 0, 0, W, H);
+    } else {
+      // fallback plain sky
+      let g = ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,'#87CEEB');
+      g.addColorStop(1,'#bfefff');
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,W,H);
+    }
+  }
 
-        // Cek tabrakan
-        if (
-          (bX + bird.width >= pipes[i].x &&
-            bX <= pipes[i].x + 80 &&
-            (bY <= pipes[i].y + 200 ||
-              bY + bird.height >= pipes[i].y + constant)) ||
-          bY + bird.height >= canvas.height - 80
-        ) {
-          gameOver = true;
-        }
+  function drawGround(){
+    // simple ground with pattern
+    ctx.fillStyle = '#ded29a';
+    ctx.fillRect(0, H - groundHeight, W, groundHeight);
+    // grassy strip
+    ctx.fillStyle = '#2e8b57';
+    ctx.fillRect(0, H - groundHeight - 6, W, 6);
+  }
 
-        // Tambah skor
-        if (pipes[i].x === 5) {
-          score++;
-        }
-      }
+  function drawPipeSprite(x, topHeight){
+    // top pipe
+    // upper pipe body
+    const headH = 24;
+    ctx.save();
+    // body gradient
+    let grad = ctx.createLinearGradient(x,0,x,topHeight);
+    grad.addColorStop(0,'#7fe37f');
+    grad.addColorStop(1,'#2b9c2b');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, 0, pipeW, topHeight);
 
-      // Lantai
-      drawGround();
+    // head (rounded) - simulate by rect with shadow
+    ctx.fillStyle = '#3aa43a';
+    ctx.fillRect(x-6, topHeight - headH/2, pipeW+12, headH);
+    ctx.restore();
 
-      // Burung
-      ctx.drawImage(bird, bX, bY);
+    // bottom pipe
+    const bottomTop = topHeight + gap;
+    let bottomH = H - groundHeight - bottomTop;
+    // body
+    let grad2 = ctx.createLinearGradient(x, bottomTop, x, bottomTop + bottomH);
+    grad2.addColorStop(0,'#7fe37f');
+    grad2.addColorStop(1,'#2b9c2b');
+    ctx.fillStyle = grad2;
+    ctx.fillRect(x, bottomTop, pipeW, bottomH);
+    // head
+    ctx.fillStyle = '#3aa43a';
+    ctx.fillRect(x-6, bottomTop + bottomH - headH/2, pipeW+12, headH);
+  }
 
-      velocity += gravity;
-      bY += velocity;
+  function drawBirdSprite(){
+    // draw bird image if available
+    if(birdImg.complete && birdImg.naturalWidth){
+      // optional rotation for feel
+      ctx.save();
+      const cx = bird.x + bird.w/2;
+      const cy = bird.y + bird.h/2;
+      ctx.translate(cx, cy);
+      ctx.rotate(bird.rotation);
+      ctx.drawImage(birdImg, -bird.w/2, -bird.h/2, bird.w, bird.h);
+      ctx.restore();
+    } else {
+      // fallback: yellow circle
+      ctx.save();
+      ctx.fillStyle = '#ffd54a';
+      ctx.beginPath();
+      ctx.ellipse(bird.x + bird.w/2, bird.y + bird.h/2, bird.w/2, bird.h/2, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
 
-      // Skor
-      ctx.fillStyle = "#fff";
-      ctx.font = "30px Arial";
-      ctx.fillText("Score : " + score, 10, canvas.height - 20);
+  function drawFrame(){
+    // clear
+    ctx.clearRect(0,0,W,H);
 
-      if (!gameOver) {
-        requestAnimationFrame(draw);
-      } else {
-        ctx.fillStyle = "red";
-        ctx.font = "50px Arial";
-        ctx.fillText("Game Over", canvas.width / 2 - 150, canvas.height / 2);
-        ctx.font = "24px Arial";
-        ctx.fillText("Tap layar / tekan tombol untuk restart", canvas.width / 2 - 200, canvas.height / 2 + 40);
-      }
+    drawBackground();
+
+    // draw pipes
+    for(let p of pipes){
+      drawPipeSprite(p.x, p.top);
     }
 
-    draw();
+    drawGround();
 
-    // Resize
-    window.addEventListener("resize", () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    });
-  </script>
+    // draw bird
+    drawBirdSprite();
+
+    // hud (score)
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.font = '22px "Segoe UI", Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Score: ${score}`, 12, 30);
+
+    // best (small)
+    ctx.textAlign = 'right';
+    ctx.fillText(`Best: ${best}`, W - 12, 30);
+  }
+
+  // load sounds safely (some browsers block until interaction)
+  function enableAudioAfterGesture(){
+    // attempt to play muted short then pause to unlock audio
+    try{
+      bgm.volume = 0.4;
+      sndFlap.volume = 0.9;
+      sndPoint.volume = 0.9;
+      sndHit.volume = 0.9;
+      bgm.play().then(() => {
+        bgm.pause();
+      }).catch(()=>{});
+    }catch(e){}
+    window.removeEventListener('touchstart', enableAudioAfterGesture);
+    window.removeEventListener('mousedown', enableAudioAfterGesture);
+  }
+  window.addEventListener('touchstart', enableAudioAfterGesture, {once:true});
+  window.addEventListener('mousedown', enableAudioAfterGesture, {once:true});
+
+  // initialize UI
+  muteBtn.textContent = muted ? 'Unmute' : 'Mute';
+  document.getElementById('scoreDisplay').textContent = 'Score: 0';
+
+  // expose some helpers to global (used by inline buttons)
+  window.setLevel = setLevel;
+  window.start = start;
+  window.backToMenu = backToMenu;
+  window.restart = restart;
+
+  // initial draw (menu)
+  drawBackground();
+  drawGround();
+  drawBirdSprite();
+
+})(); // IIFE end
+</script>
 </body>
-</html>
+  </html>
