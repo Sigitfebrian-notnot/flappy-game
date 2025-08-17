@@ -1,24 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Fly Bird - Single File</title>
+  <title>Fly Bird — Full (backgroud.html)</title>
+
+  <!-- ============================
+       STYLE: panjang & terpisah
+       ============================ -->
   <style>
     :root{
-      --ui-bg: rgba(255,255,255,0.95);
-      --accent: #ff9900;
+      --ui-bg: rgba(255,255,255,0.96);
+      --accent: #ff8c00;
       --muted: #666;
+      --hud-shadow: 0 3px 8px rgba(0,0,0,0.35);
     }
+
     html,body{
       height:100%;
       margin:0;
       font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
       background: linear-gradient(#87CEEB,#bfefff);
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* Canvas centering */
+    /* Container untuk center canvas dan overlay */
     #container{
       width:100%;
       height:100%;
@@ -29,6 +37,7 @@
       overflow:hidden;
     }
 
+    /* Canvas */
     canvas{
       display:block;
       max-width:100%;
@@ -36,11 +45,68 @@
       touch-action:none; /* prevent scrolling when tapping */
       border-radius:10px;
       box-shadow:0 8px 30px rgba(0,0,0,0.25);
-      background-size:cover;
-      background-position:center;
+      background-color: transparent;
+      background-size: cover;
+      background-position: center;
     }
 
-    /* Menu / overlays */
+    /* Responsive ratio choices */
+    @media (min-aspect-ratio: 2/3) {
+      /* wide screens: set canvas to classic Flappy size */
+      canvas{ width:420px; height:630px; }
+    }
+    @media (max-aspect-ratio: 2/3) {
+      /* tall screens (phones): use full width minus margin */
+      canvas{ width:calc(100vw - 20px); height:calc(100vh - 80px); }
+    }
+
+    /* Top HUD (Score + buttons) */
+    #topUI{
+      position:absolute;
+      top:12px;
+      left:12px;
+      z-index:40;
+      color:#fff;
+      font-weight:700;
+      text-shadow:0 2px 4px rgba(0,0,0,0.5);
+      display:flex;
+      gap:8px;
+      align-items:center;
+      pointer-events:none; /* allow clicks to pass to canvas except buttons inside */
+    }
+    /* Buttons inside topUI need pointer events */
+    #topUI .btn{ pointer-events:auto; }
+
+    .hudBox{
+      background:rgba(0,0,0,0.35);
+      padding:6px 10px;
+      border-radius:10px;
+      color:white;
+      font-weight:700;
+      font-size:16px;
+      box-shadow:var(--hud-shadow);
+    }
+
+    /* Mute & Menu buttons */
+    .controlBtn{
+      position:absolute;
+      top:12px;
+      right:12px;
+      z-index:40;
+      display:flex;
+      gap:8px;
+    }
+    .controlBtn button{
+      background:rgba(0,0,0,0.35);
+      border:0;
+      color:#fff;
+      padding:8px 10px;
+      border-radius:8px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    /* Panel (menu / overlay) */
     .panel{
       position:absolute;
       left:50%;
@@ -49,557 +115,623 @@
       background:var(--ui-bg);
       padding:18px;
       border-radius:12px;
-      box-shadow:0 6px 18px rgba(0,0,0,0.2);
-      width:320px;
-      max-width:90%;
+      box-shadow:0 6px 18px rgba(0,0,0,0.18);
+      width:360px;
+      max-width:92%;
       text-align:center;
+      z-index:60;
     }
-    .hidden{ display:none; }
-    h1{ margin:6px 0 12px; font-size:24px; }
-    p.desc{ margin:6px 0 12px; color:var(--muted); font-size:14px; }
+    .panel.hidden{ display:none; }
+    .panel h1{ margin:6px 0 10px; font-size:22px; }
+    .panel p.desc{ color:var(--muted); margin:6px 0 12px; font-size:14px; }
+
     .row{ display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap; }
-    button{
+    button.primary{
       background:var(--accent);
       border:none;
       color:white;
       padding:10px 14px;
       border-radius:8px;
-      font-weight:600;
-      cursor:pointer;
-      box-shadow:0 3px 0 rgba(0,0,0,0.08) inset;
-    }
-    button.gray{ background:#999; }
-    .small{ padding:8px 10px; font-size:14px; }
-    .info{ font-size:13px; color:#333; margin-top:8px; }
-
-    /* top UI */
-    #topUI{
-      position:absolute;
-      top:12px;
-      left:12px;
-      z-index:30;
-      color:#fff;
       font-weight:700;
-      text-shadow:0 2px 4px rgba(0,0,0,0.5);
-      display:flex;
-      gap:12px;
-      align-items:center;
+      cursor:pointer;
+      box-shadow:0 4px 0 rgba(0,0,0,0.08) inset;
     }
-    #topUI button{ background:rgba(0,0,0,0.35); padding:6px 10px; border-radius:8px; font-weight:600; color:#fff; border:0; }
-
-    /* bottom small hint */
-    #hint{ position:absolute; bottom:12px; left:50%; transform:translateX(-50%); color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.4); font-size:13px; }
-
-    /* responsive canvas ratio */
-    @media (min-aspect-ratio: 2/3) {
-      /* wide screens: limit height */
-      canvas{ width:420px; height:630px; }
+    button.secondary{
+      background:#ddd;
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:700;
     }
-    @media (max-aspect-ratio: 2/3) {
-      /* tall screens (phones): full width */
-      canvas{ width:100%; height:calc(100vh - 40px); }
+    .small{ padding:8px 10px; font-size:14px; }
+
+    .mutedTxt{ color:#444; font-size:13px; margin-top:8px; }
+
+    /* hint bottom */
+    #hint{
+      position:absolute;
+      bottom:14px;
+      left:50%;
+      transform:translateX(-50%);
+      color:#fff;
+      text-shadow:0 2px 6px rgba(0,0,0,0.4);
+      font-size:13px;
+      z-index:50;
     }
   </style>
 </head>
 <body>
   <div id="container">
+    <!-- CANVAS -->
     <canvas id="gameCanvas" width="420" height="630" aria-label="Fly Bird game"></canvas>
 
-    <!-- Top UI -->
-    <div id="topUI" aria-hidden="true">
-      <div id="scoreDisplay">Score: 0</div>
-      <button id="muteBtn" class="small">Mute</button>
-      <button id="menuBtn" class="small">Menu</button>
+    <!-- Top UI (score) -->
+    <div id="topUI" aria-hidden="true" style="pointer-events:none">
+      <div class="hudBox" id="scoreDisplay">Score: 0</div>
     </div>
 
-    <!-- Menu Panel -->
-    <div id="menuPanel" class="panel">
-      <h1>Fly Bird</h1>
-      <p class="desc">Tap / Klik untuk lompat. Hindari pipa dan capai skor tertinggi!</p>
+    <!-- Top right controls -->
+    <div class="controlBtn" style="pointer-events:auto">
+      <button id="muteBtn" title="Mute (M)">Mute</button>
+      <button id="menuBtn" title="Menu">Menu</button>
+    </div>
 
-      <div>
-        <label style="font-weight:600">Level</label>
-        <div class="row" style="margin-top:8px">
-          <button onclick="setLevel('easy')" id="lvlEasy">Easy</button>
-          <button onclick="setLevel('med')" id="lvlMed">Medium</button>
-          <button onclick="setLevel('hard')" id="lvlHard">Hard</button>
+    <!-- MAIN MENU PANEL -->
+    <div id="menuPanel" class="panel" role="dialog" aria-modal="true">
+      <h1>Fly Bird</h1>
+      <p class="desc">Tap / Klik / Spasi untuk lompat. Hindari pipa.<br>Ganti gambar: <code>bg.png</code> &amp; <code>bird.png</code></p>
+
+      <div style="text-align:left; margin-top:8px;">
+        <label style="font-weight:700">Pilih Level</label>
+        <div class="row" style="margin-top:8px;">
+          <button id="lvlEasy" class="secondary">Easy</button>
+          <button id="lvlMed" class="secondary">Medium</button>
+          <button id="lvlHard" class="secondary">Hard</button>
         </div>
       </div>
 
-      <div class="row" style="margin-top:12px">
-        <button onclick="startFromMenu()">Play</button>
-        <button class="gray" id="howBtn">How</button>
-        <button class="gray" id="resetBest">Reset Best</button>
+      <div class="row" style="margin-top:12px;">
+        <button id="playBtn" class="primary">Play</button>
+        <button id="howBtn" class="secondary">How</button>
+        <button id="resetBest" class="secondary">Reset Best</button>
       </div>
 
-      <div class="info" id="bestTxt">Best: 0</div>
-      <div class="info" style="margin-top:8px; font-size:12px;">(Ganti gambar: <code>bg.png</code>, <code>bird.png</code>)</div>
+      <div class="mutedTxt" style="text-align:left; margin-top:10px;">
+        <div id="bestTxt">Best: 0</div>
+        <div style="font-size:12px; margin-top:6px;">(Letakkan file <code>bg.png</code>, <code>bird.png</code>, dan opsional MP3 di folder yang sama)</div>
+      </div>
     </div>
 
-    <!-- Pause/Game Over Panel (reused) -->
-    <div id="overlayPanel" class="panel hidden" aria-hidden="true">
+    <!-- OVERLAY PANEL (PAUSE / GAME OVER) -->
+    <div id="overlayPanel" class="panel hidden" role="dialog" aria-modal="true">
       <h2 id="overlayTitle">Paused</h2>
       <div id="overlayScore" style="font-size:18px; margin:8px 0">Score: 0</div>
       <div class="row">
-        <button onclick="resume()">Resume</button>
-        <button onclick="restart()">Restart</button>
-        <button onclick="backToMenu()">Menu</button>
+        <button id="resumeBtn" class="primary">Resume</button>
+        <button id="restartBtn" class="secondary">Restart</button>
+        <button id="backMenu" class="secondary">Menu</button>
       </div>
-      <div style="margin-top:10px; font-size:13px; color:#333">Tap canvas / space untuk lompat</div>
+      <div style="margin-top:10px; font-size:13px; color:#333">Tip: tekan Spasi / ketuk untuk lompat</div>
     </div>
 
-    <div id="hint">Tap anywhere to flap — use space on keyboard</div>
+    <div id="hint">Tap anywhere to flap — press Space on keyboard</div>
   </div>
 
-  <!-- Sounds (you can replace these files) -->
+  <!-- AUDIO ELEMENTS -->
+  <!-- NOTE: file names below can be replaced with your filenames.
+       Browser may block autoplay until user interacts — code handles that. -->
   <audio id="bgm" src="bgm.mp3" loop preload="auto"></audio>
   <audio id="sndFlap" src="flap.mp3" preload="auto"></audio>
   <audio id="sndPoint" src="point.mp3" preload="auto"></audio>
   <audio id="sndHit" src="hit.mp3" preload="auto"></audio>
 
-<script>
-/* =========================
-   Fly Bird - single file
-   - Uses bg.png & bird.png from same folder
-   - Draws pipes & ground procedurally
-   - Menu, levels, sounds, mute, restart, best score
-   ========================= */
+  <!-- ============================
+       JAVASCRIPT: panjang & terperinci
+       ============================ -->
+  <script>
+  /*
+    backgroud.html — Full Fly Bird game (long form)
+    - Uses bg.png and bird.png from same folder (user-provided)
+    - Draws pipes & ground procedurally (no pipe image required)
+    - Menu, levels, sounds, best score (localStorage), pause/resume, restart
+    - Mobile + Desktop input (touch, mouse, keyboard)
+  */
 
-(() => {
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
+  (function(){
+    // ---- Elements & Canvas ----
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-  // Elements
-  const menuPanel = document.getElementById('menuPanel');
-  const overlay = document.getElementById('overlayPanel');
-  const overlayTitle = document.getElementById('overlayTitle');
-  const overlayScore = document.getElementById('overlayScore');
-  const scoreDisplay = document.getElementById('scoreDisplay');
-  const bestTxt = document.getElementById('bestTxt');
-  const muteBtn = document.getElementById('muteBtn');
-  const menuBtn = document.getElementById('menuBtn');
-  const howBtn = document.getElementById('howBtn');
-  const resetBestBtn = document.getElementById('resetBest');
+    const menuPanel = document.getElementById('menuPanel');
+    const overlayPanel = document.getElementById('overlayPanel');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlayScore = document.getElementById('overlayScore');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const bestTxt = document.getElementById('bestTxt');
 
-  // sounds
-  const bgm = document.getElementById('bgm');
-  const sndFlap = document.getElementById('sndFlap');
-  const sndPoint = document.getElementById('sndPoint');
-  const sndHit = document.getElementById('sndHit');
-  let muted = false;
+    const muteBtn = document.getElementById('muteBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const playBtn = document.getElementById('playBtn');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const backMenuBtn = document.getElementById('backMenu');
+    const howBtn = document.getElementById('howBtn');
+    const resetBestBtn = document.getElementById('resetBest');
 
-  // assets (user-supplied)
-  const bgImg = new Image();
-  const birdImg = new Image();
-  bgImg.src = "bg.png";    // put your background here
-  birdImg.src = "bird.png"; // put your bird sprite here
+    const lvlEasy = document.getElementById('lvlEasy');
+    const lvlMed = document.getElementById('lvlMed');
+    const lvlHard = document.getElementById('lvlHard');
 
-  // Game state
-  let W = canvas.width, H = canvas.height;
-  let scale = 1; // used in future if needed
-  let level = 'easy'; // easy / med / hard
-  let gameState = 'menu'; // menu, running, paused, over
-  let pipes = []; // {x, topHeight}
-  let score = 0, best = 0;
-  let bird = { x: 70, y: H/2 - 20, w: 48, h: 36, vy: 0, gravity: 0.5, flapPower: -8, rotation:0 };
-  let pipeW = 64, gap = 150, pipeSpeed = 2;
-  let spawnTimer = 0, spawnInterval = 110; // frames
-  let groundHeight = 80;
+    // Audio elements
+    const bgm = document.getElementById('bgm');
+    const sndFlap = document.getElementById('sndFlap');
+    const sndPoint = document.getElementById('sndPoint');
+    const sndHit = document.getElementById('sndHit');
 
-  // Load best score
-  try {
-    best = Number(localStorage.getItem('flybird_best') || 0);
-  } catch(e){ best = 0; }
-  bestTxt.textContent = `Best: ${best}`;
+    // Images (user-supplied)
+    const bgImg = new Image();
+    const birdImg = new Image();
+    bgImg.src = 'bg.png';
+    birdImg.src = 'bird.png';
 
-  // responsive resize
-  function fitCanvas(){
-    // Keep pixel size same but scale via CSS handled by media queries;
-    // we keep internal canvas coordinates to reference size attributes
-    const rect = canvas.getBoundingClientRect();
-    W = canvas.width = Math.max(320, Math.min(window.innerWidth - 20, 420));
-    H = canvas.height = Math.max(480, Math.min(window.innerHeight - 40, 800));
-    // reset some positions
-    bird.x = Math.round(W * 0.12);
-    if (bird.y > H - groundHeight - bird.h) bird.y = H/2;
-  }
-  window.addEventListener('resize', fitCanvas);
-  fitCanvas();
+    // ---- Game variables ----
+    let W = canvas.width, H = canvas.height;
+    let gameState = 'menu'; // menu | running | paused | over
+    let level = 'easy';     // easy | med | hard
+    let muted = false;
 
-  // set level params
-  function setLevel(lv){
-    level = lv;
-    document.getElementById('lvlEasy').style.opacity = lv==='easy'?1:0.6;
-    document.getElementById('lvlMed').style.opacity = lv==='med'?1:0.6;
-    document.getElementById('lvlHard').style.opacity = lv==='hard'?1:0.6;
+    let pipes = [];         // each: {x, top}
+    let score = 0;
+    let best = 0;
 
-    if(lv==='easy'){ pipeSpeed = 2; gap = 170; spawnInterval=120; }
-    if(lv==='med'){ pipeSpeed = 3; gap = 150; spawnInterval=100; }
-    if(lv==='hard'){ pipeSpeed = 4.2; gap = 130; spawnInterval=85; }
-  }
-  setLevel('easy');
+    // Bird object (with sensible defaults)
+    const bird = {
+      x: 70,
+      y: 200,
+      w: 48,
+      h: 36,
+      vy: 0,
+      gravity: 0.5,
+      flapPower: -8,
+      rotation: 0
+    };
 
-  // menu controls
-  function startFromMenu(){
-    menuPanel.style.display = 'none';
-    start();
-  }
-  window.startFromMenu = startFromMenu;
+    // Pipe & ground parameters (will be customized per level)
+    let pipeW = 64;
+    let gap = 150;
+    let pipeSpeed = 2.0;
+    let spawnInterval = 110; // in frames
+    let spawnTimer = 0;
+    let groundH = 80;
 
-  function backToMenu(){
-    overlay.classList.add('hidden');
-    menuPanel.style.display = 'block';
-    gameState = 'menu';
-  }
-  window.backToMenu = backToMenu;
+    // ---- Utilities ----
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
 
-  // resume
-  function resume(){
-    overlay.classList.add('hidden');
-    if(gameState === 'paused') {
-      gameState = 'running';
-      loop();
-    } else if (gameState === 'over'){
-      // nothing
-      start();
+    // ---- Persistence: best score ----
+    try{
+      best = Number(localStorage.getItem('flybird_best') || 0);
+    }catch(e){ best = 0; }
+    bestTxt.textContent = `Best: ${best}`;
+
+    // ---- Responsive: fit canvas size (internal coords) ----
+    function fitCanvas(){
+      // keep internal canvas size in range (so UI scaled consistently)
+      W = canvas.width = Math.max(320, Math.min(window.innerWidth - 20, 420));
+      H = canvas.height = Math.max(480, Math.min(window.innerHeight - 40, 800));
+      // recalc bird pos
+      bird.x = Math.round(W * 0.12);
+      if (bird.y > H - groundH - bird.h) bird.y = Math.round(H*0.4);
     }
-  }
-  window.resume = resume;
+    window.addEventListener('resize', fitCanvas);
+    fitCanvas();
 
-  // restart
-  function restart(){
-    overlay.classList.add('hidden');
-    start();
-  }
-  window.restart = restart;
+    // ---- Level settings ----
+    function applyLevelSettings(lv){
+      level = lv;
+      // Visual feedback on selected button
+      [lvlEasy, lvlMed, lvlHard].forEach(btn => btn.style.opacity = '0.7');
+      if(lv === 'easy'){ pipeSpeed = 2; gap = 170; spawnInterval = 120; lvlEasy.style.opacity = '1'; }
+      if(lv === 'med'){  pipeSpeed = 3; gap = 150; spawnInterval = 100; lvlMed.style.opacity = '1'; }
+      if(lv === 'hard'){ pipeSpeed = 4.2; gap = 130; spawnInterval = 85; lvlHard.style.opacity = '1'; }
+    }
+    applyLevelSettings('easy');
 
-  // mute toggle
-  function toggleMute(){
-    muted = !muted;
-    bgm.muted = sndFlap.muted = sndPoint.muted = sndHit.muted = muted;
-    muteBtn.textContent = muted ? 'Unmute' : 'Mute';
-  }
-  muteBtn.addEventListener('click', toggleMute);
-  menuBtn.addEventListener('click', () => {
-    // pause and show menu
-    if(gameState === 'running'){
+    // expose function to inline onclicks (not strictly necessary)
+    window.setLevel = applyLevelSettings;
+
+    // ---- Menu & UI interactions ----
+    playBtn.addEventListener('click', startFromMenu);
+    menuBtn.addEventListener('click', () => {
+      if (gameState === 'running'){
+        pauseGame();
+      } else {
+        menuPanel.style.display = 'block';
+      }
+    });
+    resumeBtn.addEventListener('click', resumeGame);
+    restartBtn.addEventListener('click', () => startGame());
+    backMenuBtn.addEventListener('click', backToMenu);
+
+    howBtn.addEventListener('click', () => {
+      alert('Cara main:\n- Ketuk layar / klik / tekan Spasi untuk lompat.\n- Hindari pipa. Pilih level sebelum Play. Ganti bg.png & bird.png di folder yang sama.');
+    });
+
+    resetBestBtn.addEventListener('click', () => {
+      if(confirm('Reset best score?')) {
+        best = 0;
+        try{ localStorage.setItem('flybird_best','0'); }catch(e){}
+        bestTxt.textContent = `Best: ${best}`;
+      }
+    });
+
+    // mute toggle
+    muteBtn.addEventListener('click', () => {
+      muted = !muted;
+      [bgm, sndFlap, sndPoint, sndHit].forEach(a => { try{ a.muted = muted; }catch(e){} });
+      muteBtn.textContent = muted ? 'Unmute' : 'Mute';
+    });
+
+    // ---- Input handling (touch, mouse, keyboard) ----
+    function handleFlap(){
+      if (gameState === 'menu') { startFromMenu(); return; }
+      if (gameState === 'running'){
+        bird.vy = bird.flapPower;
+        bird.rotation = -0.7;
+        playSound(sndFlap);
+      } else if (gameState === 'over') {
+        // quick restart when tapping after game over
+        startGame();
+      }
+    }
+    canvas.addEventListener('touchstart', function(e){ e.preventDefault(); handleFlap(); }, {passive:false});
+    canvas.addEventListener('mousedown', function(){ handleFlap(); });
+    window.addEventListener('keydown', function(e){
+      if (e.code === 'Space'){ e.preventDefault(); handleFlap(); }
+      if (e.code === 'KeyM'){ muteBtn.click(); }
+      if (e.code === 'KeyP'){
+        if (gameState === 'running') pauseGame();
+        else if (gameState === 'paused') resumeGame();
+      }
+    });
+
+    // unlock audio on first gesture (some browsers block autoplay)
+    function unlockAudio(){
+      try{
+        bgm.volume = 0.45;
+        sndFlap.volume = 0.9;
+        sndPoint.volume = 0.9;
+        sndHit.volume = 0.9;
+        bgm.play().then(()=>{ bgm.pause(); }).catch(()=>{});
+      }catch(e){}
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('mousedown', unlockAudio);
+    }
+    window.addEventListener('touchstart', unlockAudio, {once:true});
+    window.addEventListener('mousedown', unlockAudio, {once:true});
+
+    // sound-safe play helper
+    function playSound(audio){
+      if(!audio) return;
+      if(muted) return;
+      try{
+        audio.currentTime = 0;
+        audio.play().catch(()=>{ /* ignore */ });
+      }catch(e){}
+    }
+
+    // ---- Game flow functions ----
+    function startFromMenu(){
+      menuPanel.style.display = 'none';
+      startGame();
+    }
+
+    function startGame(){
+      // reset
+      fitCanvas();
+      pipes = [];
+      score = 0;
+      spawnTimer = 0;
+      bird.y = Math.round(H*0.4);
+      bird.vy = 0;
+      bird.rotation = 0;
+      gameState = 'running';
+      // start bgm (if available)
+      bgm.currentTime = 0;
+      playSound(bgm);
+      // start loop
+      requestAnimationFrame(loop);
+    }
+
+    function pauseGame(){
+      if (gameState !== 'running') return;
       gameState = 'paused';
       overlayTitle.textContent = 'Paused';
       overlayScore.textContent = `Score: ${score}`;
-      overlay.classList.remove('hidden');
-    } else {
+      overlayPanel.classList.remove('hidden');
+    }
+
+    function resumeGame(){
+      if (gameState !== 'paused') return;
+      overlayPanel.classList.add('hidden');
+      gameState = 'running';
+      requestAnimationFrame(loop);
+    }
+
+    function backToMenu(){
+      // stop & show menu
+      gameState = 'menu';
+      overlayPanel.classList.add('hidden');
       menuPanel.style.display = 'block';
+      bgm.pause();
     }
-  });
 
-  howBtn.addEventListener('click', () => {
-    alert('Tap layar / klik / tekan spasi untuk lompat. Hindari pipa. Pilih level sebelum Play. Ganti bg.png & bird.png dengan assetmu.');
-  });
+    // ---- Spawn pipe ----
+    function spawnPipe(){
+      const minTop = 40;
+      // top max: leave space for ground & gap
+      const maxTop = Math.max(90, H - groundH - gap - 40);
+      const top = Math.floor(Math.random() * (maxTop - minTop)) + minTop;
+      pipes.push({ x: W + 20, top: top, passed: false });
+    }
 
-  resetBestBtn.addEventListener('click', () => {
-    if(confirm('Reset best score?')) {
-      best = 0;
-      try{ localStorage.setItem('flybird_best', '0'); }catch(e){}
-      bestTxt.textContent = `Best: ${best}`;
-    }
-  });
+    // ---- Collision check: axis-aligned boxes ----
+    function checkCollision(pipe){
+      const bx1 = bird.x, by1 = bird.y, bx2 = bird.x + bird.w, by2 = bird.y + bird.h;
+      const px1 = pipe.x, py1 = 0, px2 = pipe.x + pipeW, py2 = pipe.top;
+      const bxTop = pipe.top + gap;
+      const p2x1 = pipe.x, p2y1 = bxTop, p2x2 = pipe.x + pipeW, p2y2 = H - groundH;
 
-  // input: tap / click / space
-  function flap(){
-    if(gameState === 'menu') {
-      startFromMenu();
-      return;
+      // overlap with top pipe?
+      const overlapTop = !(bx2 < px1 || bx1 > px2 || by2 < py1 || by1 > py2);
+      const overlapBottom = !(bx2 < p2x1 || bx1 > p2x2 || by2 < p2y1 || by1 > p2y2);
+      return overlapTop || overlapBottom;
     }
-    if(gameState === 'running'){
-      bird.vy = bird.flapPower;
-      bird.rotation = -0.6;
-      playSound(sndFlap);
-    } else if (gameState === 'over'){
-      start(); // restart automatically
+
+    // ---- When hit ----
+    function hit(){
+      gameState = 'over';
+      playSound(sndHit);
+      try{ bgm.pause(); }catch(e){}
+      // save best
+      if (score > best){
+        best = score;
+        try{ localStorage.setItem('flybird_best', String(best)); }catch(e){}
+        bestTxt.textContent = `Best: ${best}`;
+      }
+      // show overlay
+      overlayTitle.textContent = 'Game Over';
+      overlayScore.textContent = `Score: ${score}`;
+      overlayPanel.classList.remove('hidden');
+      scoreDisplay.textContent = `Score: ${score}`;
     }
-  }
-  canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); flap(); }, {passive:false});
-  canvas.addEventListener('mousedown', (e)=>{ flap(); });
-  window.addEventListener('keydown', (e)=>{
-    if(e.code === 'Space') { e.preventDefault(); flap(); }
-    if(e.code === 'KeyM'){ toggleMute(); }
-    if(e.code === 'KeyP'){ // pause
-      if (gameState === 'running'){
-        gameState = 'paused';
-        overlayTitle.textContent = 'Paused';
-        overlayScore.textContent = `Score: ${score}`;
-        overlay.classList.remove('hidden');
-      } else if (gameState === 'paused'){
-        resume();
+
+    // ---- Drawing helpers (long, explicit) ----
+    function drawBackground(){
+      if (bgImg.complete && bgImg.naturalWidth){
+        ctx.drawImage(bgImg, 0, 0, W, H);
+      } else {
+        // fallback gradient sky
+        const g = ctx.createLinearGradient(0,0,0,H);
+        g.addColorStop(0,'#87CEEB'); g.addColorStop(1,'#bfefff');
+        ctx.fillStyle = g;
+        ctx.fillRect(0,0,W,H);
       }
     }
-  });
 
-  // sound helper (safe play)
-  function playSound(audio){
-    try{
-      if(!muted && audio){
-        audio.currentTime = 0;
-        audio.play().catch(()=>{ /* autoplay block */ });
+    function drawGround(){
+      // ground base
+      ctx.fillStyle = '#e0cf9a';
+      ctx.fillRect(0, H - groundH, W, groundH);
+      // grassy strip
+      ctx.fillStyle = '#2e8b57';
+      ctx.fillRect(0, H - groundH - 6, W, 6);
+      // simple repeating pattern lines
+      ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+      for(let i=0;i<W;i+=20){
+        ctx.beginPath();
+        ctx.moveTo(i, H - groundH + 4);
+        ctx.lineTo(i+10, H - groundH + 4);
+        ctx.stroke();
       }
-    }catch(e){}
-  }
-
-  // spawn pipe
-  function spawnPipe(){
-    const minTop = 40;
-    const maxTop = Math.max(100, H - groundHeight - gap - 40);
-    const topHeight = Math.floor(Math.random() * (maxTop - minTop)) + minTop;
-    pipes.push({ x: W + 20, top: topHeight, passed: false });
-  }
-
-  // start game
-  function start(){
-    // reset
-    fitCanvas();
-    pipes = [];
-    score = 0;
-    bird.y = Math.round(H*0.4);
-    bird.vy = 0;
-    bird.rotation = 0;
-    spawnTimer = 0;
-    gameState = 'running';
-    // play bgm if available
-    bgm.currentTime = 0;
-    playSound(bgm);
-    loop();
-  }
-
-  // collision detection
-  function checkCollision(pipe){
-    // bird rect
-    const bx1 = bird.x, by1 = bird.y, bx2 = bird.x + bird.w, by2 = bird.y + bird.h;
-    // top pipe rect
-    const px1 = pipe.x, py1 = 0, px2 = pipe.x + pipeW, py2 = pipe.top;
-    // bottom pipe rect
-    const bxTop = pipe.top + gap;
-    const p2x1 = pipe.x, p2y1 = bxTop, p2x2 = pipe.x + pipeW, p2y2 = H - groundHeight;
-    // check overlap
-    const overlapTop = !(bx2 < px1 || bx1 > px2 || by2 < py1 || by1 > py2);
-    const overlapBottom = !(bx2 < p2x1 || bx1 > p2x2 || by2 < p2y1 || by1 > p2y2);
-    return overlapTop || overlapBottom;
-  }
-
-  // update and draw loop
-  function loop(){
-    if(gameState !== 'running') return;
-
-    // physics
-    bird.vy += bird.gravity;
-    bird.y += bird.vy;
-    bird.rotation += 0.06;
-    if (bird.rotation > 1.2) bird.rotation = 1.2;
-
-    // spawn pipes
-    spawnTimer++;
-    if(spawnTimer >= spawnInterval){
-      spawnTimer = 0;
-      spawnPipe();
     }
 
-    // move pipes and scoring
-    for(let i=pipes.length-1;i>=0;i--){
-      const p = pipes[i];
-      p.x -= pipeSpeed;
+    function drawPipe(x, top){
+      // top pipe body
+      const headH = 24;
+      ctx.save();
+      // top gradient body
+      const grad = ctx.createLinearGradient(0,0,0,top);
+      grad.addColorStop(0,'#7fe37f'); grad.addColorStop(1,'#2b9c2b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, 0, pipeW, top);
 
-      // pass scoring
-      if(!p.passed && p.x + pipeW < bird.x){
-        p.passed = true;
-        score++;
-        playSound(sndPoint);
+      // pipe head (rounded look)
+      ctx.fillStyle = '#3aa43a';
+      ctx.fillRect(x-6, top - headH/2, pipeW + 12, headH);
+      ctx.restore();
+
+      // bottom pipe
+      const bottomTop = top + gap;
+      const bottomH = H - groundH - bottomTop;
+      const grad2 = ctx.createLinearGradient(0,bottomTop,0,bottomTop + bottomH);
+      grad2.addColorStop(0,'#7fe37f'); grad2.addColorStop(1,'#2b9c2b');
+      ctx.fillStyle = grad2;
+      ctx.fillRect(x, bottomTop, pipeW, bottomH);
+      // bottom head
+      ctx.fillStyle = '#3aa43a';
+      ctx.fillRect(x-6, bottomTop + bottomH - headH/2, pipeW + 12, headH);
+    }
+
+    function drawBird(){
+      if (birdImg.complete && birdImg.naturalWidth){
+        // rotate around center
+        ctx.save();
+        const cx = bird.x + bird.w/2;
+        const cy = bird.y + bird.h/2;
+        ctx.translate(cx, cy);
+        ctx.rotate(bird.rotation);
+        ctx.drawImage(birdImg, -bird.w/2, -bird.h/2, bird.w, bird.h);
+        ctx.restore();
+      } else {
+        // fallback: simple yellow ellipse
+        ctx.save();
+        ctx.fillStyle = '#ffd54a';
+        ctx.beginPath();
+        ctx.ellipse(bird.x + bird.w/2, bird.y + bird.h/2, bird.w/2, bird.h/2, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function drawHUD(){
+      // left score already in topUI, but also draw shadowed text on canvas
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.font = '22px "Segoe UI", Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Score: ${score}`, 12, 30);
+      ctx.textAlign = 'right';
+      ctx.fillText(`Best: ${best}`, W - 12, 30);
+    }
+
+    // ---- Main loop (explicit) ----
+    function loop(){
+      if (gameState !== 'running') return; // stop when paused/over/menu
+
+      // physics
+      bird.vy += bird.gravity;
+      bird.y += bird.vy;
+
+      // slight rotation smoothing
+      bird.rotation += 0.06;
+      if (bird.rotation > 1.2) bird.rotation = 1.2;
+
+      // spawn management
+      spawnTimer++;
+      if (spawnTimer >= spawnInterval){
+        spawnTimer = 0;
+        spawnPipe();
       }
 
-      // collision?
-      if(checkCollision(p)){
+      // move pipes & check collisions & scoring
+      for (let i = pipes.length - 1; i >= 0; i--){
+        const p = pipes[i];
+        p.x -= pipeSpeed;
+
+        // scoring once when pipe passed
+        if (!p.passed && p.x + pipeW < bird.x){
+          p.passed = true;
+          score++;
+          playSound(sndPoint);
+          scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        // collision?
+        if (checkCollision(p)){
+          hit();
+          return;
+        }
+
+        // remove if off-screen
+        if (p.x + pipeW < -100){
+          pipes.splice(i,1);
+        }
+      }
+
+      // ground collision
+      if (bird.y + bird.h >= H - groundH){
+        bird.y = H - groundH - bird.h;
         hit();
         return;
       }
-
-      // remove off-screen
-      if(p.x + pipeW < -50){
-        pipes.splice(i,1);
+      // ceiling clamp
+      if (bird.y < 0){
+        bird.y = 0;
+        bird.vy = 0;
       }
+
+      // DRAW: clear then draw everything in order
+      ctx.clearRect(0,0,W,H);
+      drawBackground();
+      // pipes
+      for (const p of pipes) drawPipe(p.x, p.top);
+      drawGround();
+      drawBird();
+      drawHUD();
+
+      // request next frame
+      requestAnimationFrame(loop);
     }
 
-    // ground collision
-    if(bird.y + bird.h >= H - groundHeight){
-      bird.y = H - groundHeight - bird.h;
-      hit();
-      return;
+    // ---- public helpers ----
+    function start(){
+      startGame();
     }
-    if(bird.y < 0){
-      bird.y = 0;
+    function startGame(){
+      // initialize values and start loop
+      fitCanvas();
+      pipes = [];
+      score = 0;
+      spawnTimer = 0;
+      bird.y = Math.round(H*0.4);
       bird.vy = 0;
+      bird.rotation = 0;
+      gameState = 'running';
+      scoreDisplay.textContent = `Score: ${score}`;
+      overlayPanel.classList.add('hidden');
+      menuPanel.style.display = 'none';
+      // play bgm
+      try{ bgm.currentTime = 0; playSound(bgm); }catch(e){}
+      requestAnimationFrame(loop);
     }
 
-    // DRAW
-    drawFrame();
+    // expose restart to global used by buttons
+    window.restart = function(){ startGame(); };
+    window.backToMenu = function(){ backToMenu(); };
 
-    // update top UI
-    scoreDisplay.textContent = `Score: ${score}`;
-
-    // next frame
-    requestAnimationFrame(loop);
-  }
-
-  function hit(){
-    gameState = 'over';
-    playSound(sndHit);
-    bgm.pause();
-    overlayTitle.textContent = 'Game Over';
-    overlayScore.textContent = `Score: ${score}`;
-    overlay.classList.remove('hidden');
-    // save best
-    if(score > best){
-      best = score;
-      try{ localStorage.setItem('flybird_best', String(best)); }catch(e){}
-      bestTxt.textContent = `Best: ${best}`;
+    // ---- initial draw (menu preview) ----
+    function initialDraw(){
+      // draw a simple menu preview on canvas so menu doesn't look empty
+      fitCanvas();
+      ctx.clearRect(0,0,W,H);
+      drawBackground();
+      drawGround();
+      drawBird();
     }
-  }
+    initialDraw();
 
-  // drawing helpers
-  function drawBackground(){
-    // if bg image loaded, draw full stretched
-    if(bgImg.complete && bgImg.naturalWidth){
-      ctx.drawImage(bgImg, 0, 0, W, H);
-    } else {
-      // fallback plain sky
-      let g = ctx.createLinearGradient(0,0,0,H);
-      g.addColorStop(0,'#87CEEB');
-      g.addColorStop(1,'#bfefff');
-      ctx.fillStyle = g;
-      ctx.fillRect(0,0,W,H);
-    }
-  }
-
-  function drawGround(){
-    // simple ground with pattern
-    ctx.fillStyle = '#ded29a';
-    ctx.fillRect(0, H - groundHeight, W, groundHeight);
-    // grassy strip
-    ctx.fillStyle = '#2e8b57';
-    ctx.fillRect(0, H - groundHeight - 6, W, 6);
-  }
-
-  function drawPipeSprite(x, topHeight){
-    // top pipe
-    // upper pipe body
-    const headH = 24;
-    ctx.save();
-    // body gradient
-    let grad = ctx.createLinearGradient(x,0,x,topHeight);
-    grad.addColorStop(0,'#7fe37f');
-    grad.addColorStop(1,'#2b9c2b');
-    ctx.fillStyle = grad;
-    ctx.fillRect(x, 0, pipeW, topHeight);
-
-    // head (rounded) - simulate by rect with shadow
-    ctx.fillStyle = '#3aa43a';
-    ctx.fillRect(x-6, topHeight - headH/2, pipeW+12, headH);
-    ctx.restore();
-
-    // bottom pipe
-    const bottomTop = topHeight + gap;
-    let bottomH = H - groundHeight - bottomTop;
-    // body
-    let grad2 = ctx.createLinearGradient(x, bottomTop, x, bottomTop + bottomH);
-    grad2.addColorStop(0,'#7fe37f');
-    grad2.addColorStop(1,'#2b9c2b');
-    ctx.fillStyle = grad2;
-    ctx.fillRect(x, bottomTop, pipeW, bottomH);
-    // head
-    ctx.fillStyle = '#3aa43a';
-    ctx.fillRect(x-6, bottomTop + bottomH - headH/2, pipeW+12, headH);
-  }
-
-  function drawBirdSprite(){
-    // draw bird image if available
-    if(birdImg.complete && birdImg.naturalWidth){
-      // optional rotation for feel
-      ctx.save();
-      const cx = bird.x + bird.w/2;
-      const cy = bird.y + bird.h/2;
-      ctx.translate(cx, cy);
-      ctx.rotate(bird.rotation);
-      ctx.drawImage(birdImg, -bird.w/2, -bird.h/2, bird.w, bird.h);
-      ctx.restore();
-    } else {
-      // fallback: yellow circle
-      ctx.save();
-      ctx.fillStyle = '#ffd54a';
-      ctx.beginPath();
-      ctx.ellipse(bird.x + bird.w/2, bird.y + bird.h/2, bird.w/2, bird.h/2, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  function drawFrame(){
-    // clear
-    ctx.clearRect(0,0,W,H);
-
-    drawBackground();
-
-    // draw pipes
-    for(let p of pipes){
-      drawPipeSprite(p.x, p.top);
+    // ---- Start/pause/resume control bindings ----
+    function resumeGame(){
+      if (gameState !== 'paused') return;
+      overlayPanel.classList.add('hidden');
+      gameState = 'running';
+      requestAnimationFrame(loop);
     }
 
-    drawGround();
+    // ---- handle hit function already defined above ----
 
-    // draw bird
-    drawBirdSprite();
+    // ---- UI wiring for overlay/menu buttons (additional) ----
+    document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+    document.getElementById('restartBtn').addEventListener('click', function(){ startGame(); });
+    document.getElementById('backMenu').addEventListener('click', function(){ backToMenu(); });
 
-    // hud (score)
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.font = '22px "Segoe UI", Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Score: ${score}`, 12, 30);
+    function backToMenu(){
+      // stop bgm & show menu
+      try{ bgm.pause(); }catch(e){}
+      gameState = 'menu';
+      menuPanel.style.display = 'block';
+      overlayPanel.classList.add('hidden');
+    }
 
-    // best (small)
-    ctx.textAlign = 'right';
-    ctx.fillText(`Best: ${best}`, W - 12, 30);
-  }
+    // set level clicks
+    lvlEasy.addEventListener('click', ()=>applyLevelSettings('easy'));
+    lvlMed.addEventListener('click', ()=>applyLevelSettings('med'));
+    lvlHard.addEventListener('click', ()=>applyLevelSettings('hard'));
 
-  // load sounds safely (some browsers block until interaction)
-  function enableAudioAfterGesture(){
-    // attempt to play muted short then pause to unlock audio
-    try{
-      bgm.volume = 0.4;
-      sndFlap.volume = 0.9;
-      sndPoint.volume = 0.9;
-      sndHit.volume = 0.9;
-      bgm.play().then(() => {
-        bgm.pause();
-      }).catch(()=>{});
-    }catch(e){}
-    window.removeEventListener('touchstart', enableAudioAfterGesture);
-    window.removeEventListener('mousedown', enableAudioAfterGesture);
-  }
-  window.addEventListener('touchstart', enableAudioAfterGesture, {once:true});
-  window.addEventListener('mousedown', enableAudioAfterGesture, {once:true});
+    // ---- safe audio unlock already set earlier ----
 
-  // initialize UI
-  muteBtn.textContent = muted ? 'Unmute' : 'Mute';
-  document.getElementById('scoreDisplay').textContent = 'Score: 0';
-
-  // expose some helpers to global (used by inline buttons)
-  window.setLevel = setLevel;
-  window.start = start;
-  window.backToMenu = backToMenu;
-  window.restart = restart;
-
-  // initial draw (menu)
-  drawBackground();
-  drawGround();
-  drawBirdSprite();
-
-})(); // IIFE end
-</script>
+    // ---- END of IIFE-like scope code ----
+  })();
+  </script>
 </body>
   </html>
