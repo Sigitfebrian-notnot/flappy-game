@@ -1,0 +1,16 @@
+body {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #70c5ce; /* warna default kalau gambar gagal load */
+}
+
+canvas {
+  display: block;
+  background: url("img/background.png") no-repeat center center;
+  background-size: cover;
+  border: 2px solid #333;
+  border-radius: 12px;
+}
