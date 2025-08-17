@@ -2,11 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Flappy Bird Clone</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Flappy Pipe</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #70c5ce;
+    }
+    canvas {
+      background: #cce7ff;
+      border: 2px solid #333;
+    }
+  </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="320" height="480"></canvas>
-  <script src="game.js"></script>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    function drawPipe(x, y, height, flipped = false) {
+      ctx.fillStyle = "#2ecc71"; // warna pipa hijau
+      if (flipped) {
+        // Pipa atas
+        ctx.fillRect(x, 0, 60, y);
+        ctx.fillRect(x - 5, y - 20, 70, 20); // kepala pipa
+      } else {
+        // Pipa bawah
+        ctx.fillRect(x, y, 60, height);
+        ctx.fillRect(x - 5, y, 70, 20); // kepala pipa
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Contoh pipa atas dan bawah
+      drawPipe(200, 200, 600, true);   // pipa atas
+      drawPipe(200, 350, 600, false);  // pipa bawah
+    }
+
+    draw();
+  </script>
 </body>
 </html>
